@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <!-- Use correct character set. -->
+        <meta charset="utf-8" />
+        <!-- Tell IE to use the latest, best version. -->
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <!-- Make the application on mobile take up the full browser screen and disable user scaling. -->
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no" />
+        <title>LCC CesiumJS Demo</title>
+        <script src="./engine/cesium/Cesium.js"></script>
+        <style>
+            @import url(./engine/cesium/widgets.css);
+
+            html,
+            body,
+            #cesiumContainer {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="cesiumContainer"></div>
+        <script type="module">
+            import { LCCRender } from '../sdk/lcc-web-sdk.js';
+            // import { LCCRender } from 'http://localhost:8081/lcc-web-sdk.dev.js';
+            // Maybe you need to create an access token of your own.  https://cesium.com/learn/ion/cesium-ion-access-tokens/
+            Cesium.Ion.defaultAccessToken =
+                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkYmM5NzM2My1lYzJmLTQ1OTItOWY0Ny02ODA4ODAyZDU5ZGYiLCJpZCI6MTIzODEwLCJpYXQiOjE3MzM4ODc5NTZ9.DuzU2nv8QeXEmdsGnfTN9rrIb2Nygter-h7rDwhqUE4';
+
+            // console.log('cesium version: ' + Cesium.VERSION);
+
+            const viewer = new Cesium.Viewer('cesiumContainer', {
+                // terrain: Cesium.Terrain.fromWorldTerrain(),
+                orderIndependentTranslucency: false, // Close order-independent rendering
+                useDefaultRenderLoop: true,
+                requestRenderMode: true, //  rendering a frame will only occur when needed as determined by changes within the scene.
+                resolutionScale: window.devicePixelRatio,
+                maximumRenderTimeChange: Infinity, // Preventing clock-driven rendering
+
+                animation: false,
+                timeline: false,
+                baseLayerPicker: false,
+                geocoder: false,
+                homeButton: false,
+                infoBox: false,
+                sceneModePicker: false,
+                selectionIndicator: false,
+                navigationHelpButton: false
+            });
+
+            viewer.scene.debugShowFramesPerSecond = true;
+            viewer.scene.screenSpaceCameraController.enableCollisionDetection = false;
+            viewer.clock.shouldAnimate = false;
+            viewer.scene.screenSpaceCameraController.enableInertia = false;
+
+            // var controller = viewer.scene.screenSpaceCameraController;
+            // controller.inertiaZeroSpeed = 0.0;
+            // controller.inertiaSpin = 0.0;
+            // controller.inertiaTranslate = 0.0;
+            // controller.inertiaZoom = 0.0;
+
+            // Get the global coordinates of the local coordinate origin
+            const cartesian3 = Cesium.Cartesian3.fromDegrees(114.0592, 22.5429, 60);
+            // The local coordinate z-axis is perpendicular to the ground, and the local coordinate y-axis points to the north.
+            const m1 = Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(114.0592, 22.5429, 10));
+
+            let lccReady = false;
+            const lccObj = LCCRender.load(
+                {
+                    camera: viewer.camera,
+                    scene: viewer.scene,
+                    dataPath: `${location.origin}/assets/ConfuciusTemple/meta.lcc`, // Lcc data path
+                    renderLib: Cesium,
+                    canvas: viewer.scene.canvas,
+                    useEnv: false,
+                    modelMatrix: m1, // Init matrix
+                    useIndexDB: true, // Enable or disable data caching
+                    appKey: null // replace your key
+                },
+                (mesh) => {
+                    console.log('Lcc object loaded: ', mesh);
+                    lccReady = true;
+
+                    let cartesian = lccObj.getTranslation();
+
+                    console.log('cartesian: ', cartesian);
+
+                    let point = {
+                        position: cartesian,
+                        point: { pixelSize: 2, color: Cesium.Color.RED }
+                    };
+
+                    const entity = viewer.entities.add(point);
+
+                    viewer.flyTo(entity);
+                },
+                (percent) => {
+                    console.log('Lcc object loading: ' + (percent * 100).toFixed(1) + '%');
+                },
+                () => {
+                    console.log('Lcc object loading failure');
+                }
+            );
+
+            window.lccObj = lccObj;
+            window.LCCRender = LCCRender;
+
+            // viewer.scene.preRender.addEventListener(function(scene, time) {
+            //     console.log('preRender ...1');
+            // });
+
+            // viewer.camera.changed.addEventListener(() => {
+            //     console.log('Camera Changed ...');
+            // });
+
+            // viewer.scene.canvas.addEventListener('pointerdown', (evt) => {
+            //   if (!lccReady)  // Waiting for loading to complete
+            //     return;
+
+            //   // console.log('pointerdown: ', evt);
+            //   let checkPos = lccObj.raycast({ evt: evt, maxDistance: 300, radius: 0.1 });
+            //   if (checkPos) {
+            //     console.log('detect: ', checkPos.x, checkPos.y, checkPos.z);
+            //   }
+            //   else {
+            //     console.log('no point detect');
+            //   }
+            // });
+        </script>
+    </body>
+</html>

@@ -1,0 +1,60 @@
+:root { --ink:#0d1117; --paper:#f2efe6; --signal:#2f6f4f; --warn:#b4552d; }
+
+* { box-sizing: border-box; }
+html, body, #root { margin:0; padding:0; height:100%; overflow:hidden; }
+
+.lcc-root { position:fixed; inset:0; background:#000; }
+.lcc-root canvas { display:block; }
+
+.lcc-gate {
+  position:fixed; inset:0; z-index:10; display:grid; place-items:center;
+  text-align:center; background:rgba(13,17,23,.94); color:var(--paper);
+  font:400 15px/1.5 ui-monospace, Menlo, monospace;
+}
+.lcc-gate .pct { font-size:44px; margin:0 0 6px; }
+.lcc-gate .msg { color:rgba(242,239,230,.6); margin:0; }
+
+.lcc-doors {
+  position:fixed; bottom:16px; left:16px; z-index:5; max-width:260px;
+  background:rgba(13,17,23,.72); border:1px solid rgba(242,239,230,.18);
+  padding:10px 12px; backdrop-filter:blur(6px);
+  font:400 12px ui-monospace, Menlo, monospace; color:var(--paper);
+}
+.lcc-doors .lbl {
+  font-size:9px; letter-spacing:.14em; text-transform:uppercase;
+  color:rgba(242,239,230,.5); margin-bottom:7px;
+}
+.lcc-doors button {
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  width:100%; margin-bottom:3px; padding:6px 8px; cursor:pointer;
+  background:transparent; color:var(--paper);
+  border:1px solid rgba(242,239,230,.16);
+  font:inherit; text-align:left;
+}
+.lcc-doors button:hover { border-color:rgba(242,239,230,.5); }
+.lcc-doors button:focus-visible { outline:2px solid var(--paper); outline-offset:1px; }
+.lcc-doors button.warm { border-color:rgba(47,111,79,.7); }
+.lcc-doors .tag {
+  font-size:9px; letter-spacing:.08em; text-transform:uppercase;
+  color:rgba(242,239,230,.45);
+}
+.lcc-doors button.warm .tag { color:var(--signal); }
+
+.lcc-keys {
+  position:fixed; bottom:16px; left:50%; transform:translateX(-50%); z-index:5;
+  background:rgba(13,17,23,.72); border:1px solid rgba(242,239,230,.18);
+  padding:8px 14px; pointer-events:none; text-align:center;
+  font:400 11px/1.6 ui-monospace, Menlo, monospace; color:rgba(242,239,230,.65);
+}
+.lcc-keys b { color:var(--paper); font-weight:400; }
+
+.lcc-crosshair {
+  position:fixed; top:50%; left:50%; width:3px; height:3px;
+  margin:-1.5px 0 0 -1.5px; background:rgba(242,239,230,.8);
+  z-index:5; pointer-events:none;
+}
+
+@media (max-width:640px) {
+  .lcc-keys { display:none; }
+  .lcc-doors { max-width:180px; font-size:11px; }
+}

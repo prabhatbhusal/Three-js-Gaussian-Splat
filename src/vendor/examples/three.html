@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>LCC ThreeJS Demo</title>
+    </head>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+
+    <body>
+        <script type="importmap">
+            {
+                "imports": {
+                    "three": "./engine/three/three.module.js",
+                    "three/addons/": "./engine/three/jsm/"
+                }
+            }
+        </script>
+        <script type="module">
+            import * as THREE from 'three';
+            import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+            import { FirstPersonControls } from './engine/three/FirstPersonControls.js';
+            import { LCCRender } from '../sdk/lcc-web-sdk.js';
+            // import { LCCRender } from 'http://localhost:8081/lcc-web-sdk.dev.js';
+
+            const scene = new THREE.Scene();
+
+            const renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+
+            renderer.setClearColor(0x000000);
+            document.body.appendChild(renderer.domElement);
+
+            const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 150000);
+            // camera.up.set(0, 0, 1);  // Use modelMatrix instead
+            camera.position.set(0, 2, 0);
+
+            const clock = new THREE.Clock();
+
+            // const controls = new OrbitControls(camera, renderer.domElement);
+            // controls.target.set( 0, 2, 1 );
+            // controls.update();
+            // controls.enabled = false
+
+            const firstPersonControl = new FirstPersonControls(camera, renderer.domElement);
+            firstPersonControl.enabled = true; // true
+            firstPersonControl.movementSpeed = 5;
+            firstPersonControl.lookAt(new THREE.Vector3(0, 2, 1));
+
+            // Use the model matrix to change the model coordinate system, or set the up direction of the camera
+            // eg.  camera.up.set(0, 0, 1);
+            const modelMatrix = new THREE.Matrix4(-1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1);
+
+            // Loading lcc object
+            const lccObj = LCCRender.load(
+                {
+                    camera: camera,
+                    scene: scene,
+                    dataPath: `${location.origin}/assets/ConfuciusTemple/meta.lcc`, // Lcc data path
+                    renderLib: THREE,
+                    canvas: renderer.domElement,
+                    renderer: renderer,
+                    useEnv: true,
+                    useIndexDB: true, // Enable or disable data caching
+                    useLoadingEffect: true, // Enable or disable loading effects
+                    modelMatrix: modelMatrix, // Set model matrix
+                    appKey: null // replace your key
+                },
+                (mesh) => {
+                    console.log('Lcc object Loaded:  ', mesh);
+                },
+                (percent) => {
+                    console.log('Lcc object loading: ' + (percent * 100).toFixed(1) + '%');
+                },
+                () => {
+                    console.log('Lcc object loading failure');
+                }
+            );
+
+            window.lccObj = lccObj;
+            window.LCCRender = LCCRender;
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            function render() {
+                if (firstPersonControl?.enabled) {
+                    firstPersonControl?.update(clock.getDelta());
+                }
+                LCCRender.update();
+                renderer.render(scene, camera);
+            }
+
+            function animate() {
+                renderer.setAnimationLoop(() => {
+                    render();
+                });
+            }
+
+            animate();
+        </script>
+    </body>
+</html>

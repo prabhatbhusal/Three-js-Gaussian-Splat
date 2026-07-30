@@ -1,122 +1,186 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Canvas } from '@react-three/fiber';
+import * as THREE from 'three';
+import { useRoomManager } from './useRoomManager.js';
+import { useLccWalker } from './useLccWalker.js';
+import { DebugHud } from './DebugHud.jsx';
+import { ROOMS, validateGraph, probeRooms } from './doors.js';
+import './hud.css';
 
-function App() {
-  const [count, setCount] = useState(0)
+/* ------------------------------------------------------------------ */
+/* Inside the Canvas                                                  */
+/* ------------------------------------------------------------------ */
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+function Tour({ onState }) {
+  const manager = useRoomManager({ dev: import.meta.env.DEV });
+  const walker = useLccWalker({
+    renderer: manager.activeRenderer,
+    roomId: manager.active,
+    enabled: !manager.transitioning
+  });
 
-      <div className="ticks"></div>
+  const walkerRef = useRef(walker);
+  walkerRef.current = walker;
+  const managerRef = useRef(manager);
+  managerRef.current = manager;
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+  /**
+   * Travel through a door.
+   *
+   * enterRoom returns the ARRIVAL spawn for this specific door, so the walker
+   * must be reset to that — not to a hardcoded origin. Getting this wrong is
+   * why you would land in the same spot in every room.
+   */
+  const go = (roomId) => {
+    const m = managerRef.current;
+    if (!m || m.transitioning) return;
+    if (!m.neighbours.includes(roomId)) {
+      console.warn(`[tour] no door from "${m.active}" to "${roomId}"`);
+      return;
+    }
+    const res = m.enterRoom(roomId, { from: m.active });
+    walkerRef.current.reset(res?.spawn ?? [0, 2, 0], res?.yaw ?? 0);
+  };
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+  const goRef = useRef(go);
+  goRef.current = go;
+
+  /**
+   * Number keys 1-9 pick a door. This is the important bit: keydown on `window`
+   * fires while pointer lock is active, whereas a DOM button click cannot —
+   * the pointer is captured by the canvas.
+   */
+  useEffect(() => {
+    const onKey = (e) => {
+      const m = managerRef.current;
+      if (!m || m.transitioning) return;
+
+      const n = e.code.startsWith('Digit') ? Number(e.code.slice(5)) : NaN;
+      if (n >= 1 && n <= m.neighbours.length) {
+        e.preventDefault();
+        goRef.current(m.neighbours[n - 1]);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Publish state to the DOM overlays. React context does not usefully cross
+  // the Canvas boundary, so lift instead of trying to consume it outside.
+  useEffect(() => {
+    onState({
+      active: manager.active,
+      activeName: manager.activeName,
+      transitioning: manager.transitioning,
+      progress: manager.progress,
+      neighbours: manager.neighbours,
+      resident: manager.resident,
+      tier: manager.tier,
+      budget: manager.budget,
+      stats: manager.stats,
+      manager,
+      go: (id) => goRef.current(id)
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manager.active, manager.transitioning, manager.progress, manager.resident, onState]);
+
+  return null;
 }
 
-export default App
+/* ------------------------------------------------------------------ */
+/* DOM overlays                                                       */
+/* ------------------------------------------------------------------ */
+
+function Gate({ state }) {
+  if (!state || !state.transitioning) return null;
+  return (
+    <div className="lcc-gate">
+      <div>
+        <p className="pct">{(state.progress * 100).toFixed(0)}%</p>
+        <p className="msg">{state.activeName || 'Loading'}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Doors list. Numbered, because the number key is the primary way to travel —
+ * clicking only works after Esc releases the pointer.
+ *
+ * "ready" means the room is already resident from graph prefetch, so the
+ * transition will be instant. "load" means it has to fetch first.
+ */
+function Doors({ state }) {
+  if (!state || state.transitioning) return null;
+  return (
+    <div className="lcc-doors">
+      <div className="lbl">Doors from {state.activeName}</div>
+      {state.neighbours.map((id, i) => {
+        const warm = state.resident.includes(id);
+        return (
+          <button key={id} onClick={() => state.go(id)} className={warm ? 'warm' : ''}>
+            <span className="num">{i + 1}</span>
+            <span className="nm">{ROOMS[id].name}</span>
+            <span className="tag">{warm ? 'ready' : 'load'}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function Keys() {
+  return (
+    <div className="lcc-keys">
+      <b>Click</b> to capture mouse · <b>WASD</b> move · <b>Space</b> jump · <b>Shift</b> run<br />
+      <b>1</b>–<b>9</b> take a door · <b>P</b> record spawn · <b>F3</b> stats · <b>Esc</b> release mouse
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Root                                                              */
+/* ------------------------------------------------------------------ */
+
+export default function App() {
+  const [state, setState] = useState(null);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const problems = validateGraph();
+    if (problems.length) {
+      console.warn(`[graph] ${problems.length} issue(s):`);
+      problems.forEach((p) => console.warn('  · ' + p));
+    } else {
+      console.log('[graph] 17 rooms, 17 doors, all reachable');
+    }
+    probeRooms();
+  }, []);
+
+  const onState = useMemo(() => (s) => setState(s), []);
+
+  return (
+    <div className="lcc-root">
+      <Canvas
+        frameloop="always"
+        gl={{
+          antialias: false,
+          // The SDK never sets toneMapping, so it assumes the plain
+          // WebGLRenderer default its own example uses. R3F defaults to ACES
+          // filmic, which makes splats look washed out next to LCC Studio.
+          toneMapping: THREE.NoToneMapping
+        }}
+        dpr={[1, 2]}
+        camera={{ fov: 60, near: 0.1, far: 250, position: [0, 2, 0] }}
+      >
+        <Tour onState={onState} />
+      </Canvas>
+
+      <Gate state={state} />
+      <Doors state={state} />
+      <Keys />
+      {state?.transitioning === false && <div className="lcc-crosshair" />}
+      {state && <DebugHud stats={state.stats} roomManager={state.manager} />}
+    </div>
+  );
+}

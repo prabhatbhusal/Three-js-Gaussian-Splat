@@ -81,7 +81,7 @@ export const DOORS = [
   { a: 'mechanical-lab', b: 'veterinary-lab',    aSpawn: null, aYaw: null, bSpawn: null, bYaw: null }
 ];
 
-export const DEFAULT_SPAWN = [0, 2, 0];
+export const DEFAULT_SPAWN = [1, 3, 0];
 
 /* ------------------------------------------------------------------ */
 /* Paths                                                              */

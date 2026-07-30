@@ -108,6 +108,12 @@ export function useRoomManager({ dev = false, appKey = null } = {}) {
         (mesh) => {
           entry.mesh = mesh;
           entry.state = 'ready';
+          if (dev) {
+              window.__LCC = LCCRender;
+              window.__room = entry.renderer;
+              window.__camera = camera;
+              window.__gl = gl;
+}
           entry.loadMs = Math.round(performance.now() - entry.t0);
           setRoomVisible(entry, entry.visible);
           if (dev) {

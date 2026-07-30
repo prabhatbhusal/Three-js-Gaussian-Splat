@@ -162,23 +162,3 @@ lccObj.setPosition(x,y,z) / setRotation(r) / setScale(s) / setModelMatrix(m)
 controller. Resolve horizontal and vertical movement in **separate** passes —
 one combined resolve flings the player sideways when they scuff a wall mid-fall.
 
-## Is React the right call here?
-
-For the **viewer you embed on client sites**, React buys you little. The vanilla
-starter is one HTML file, loads faster, and has no reconciler between you and the
-frame loop.
-
-For the **editor** — the thing that replaces using Unity or UE to add gameplay
-to an LCC — React earns its keep immediately: inspector panels, an object list,
-undo/redo history, room graph editing, asset library, multiplayer presence UI.
-That is a lot of stateful interface, and R3F's `TransformControls` wrapper plus
-plain React state gets you Blender-style gizmos far faster than hand-rolled DOM.
-
-So: vanilla for the runtime, React for the authoring tool. They can share the
-same `LccSplat` module if you keep the walker and the gizmo logic separate.
-
-## Next step
-
-Wire your 17-door room graph into `LCCRender.unload()` + `load()` transitions
-behind a fade. One React route per room, one shared `<Canvas>`, no page reloads —
-that is the concrete thing Arrival.Space's separate per-room links cannot do.

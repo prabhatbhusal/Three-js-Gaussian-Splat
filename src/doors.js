@@ -10,7 +10,8 @@
  * `authorSpawn()` at the bottom does the recording. Press P in-game.
  */
 
-export const ASSET_ROOT = '/assets/rooms';
+const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+export const ASSET_ROOT = basePath ? `${basePath}/assets/rooms` : '/assets/rooms';
 export const ENTRY_ROOM = 'outdoor';
 
 /**
